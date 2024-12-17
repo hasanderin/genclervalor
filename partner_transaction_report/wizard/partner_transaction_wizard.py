@@ -24,10 +24,11 @@ class PartnerTransactionWizard(models.TransientModel):
             FROM account_move_line aml
             JOIN res_partner p ON p.id = aml.partner_id
             JOIN account_account a ON a.id = aml.account_id
+            JOIN account_move am ON am.id = aml.move_id
             WHERE aml.parent_state = 'posted'
                 AND aml.balance != 0
                 AND a.internal_type in ('receivable', 'payable')
-                AND a.closing_type not in ('opening', 'closing')
+                AND am.closing_type not in ('opening', 'closing')
             """
         params = []
         if self.partner_ids:
