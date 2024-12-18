@@ -29,18 +29,19 @@ class PartnerTransactionXLSX(models.AbstractModel):
 
         headers = [
             'Cari Adı', 'Telefon', 'Ortalama Tarihi',
+            'Alacak Ort. Tarihi', 'Borç Ort. Tarihi',
             'Ort. Gün', 'İşlem Tutarı',
             'Borç', 'Alacak', 'Bakiye'
         ]
 
         sheet.set_column('A:A', 40)  # Cari Adı
         sheet.set_column('B:B', 15)  # Telefon
-        sheet.set_column('C:C', 20)  # Ort. İşlem Tarihi
-        sheet.set_column('D:D', 15)  # Gün Sayısı
-        sheet.set_column('E:H', 15)  # Tutarlar
+        sheet.set_column('C:E', 20)  # Ortalama Tarihler
+        sheet.set_column('F:F', 15)  # Gün Sayısı
+        sheet.set_column('G:J', 15)  # Tutarlar
 
         title = f'Cari Hareket Özeti Raporu - {report_title}'
-        sheet.merge_range('A1:H1', title, bold)
+        sheet.merge_range('A1:J1', title, bold)
 
         sheet.write(1, 0, f'Oluşturulma Tarihi: {datetime.datetime.now().strftime("%d/%m/%Y %H:%M")}', bold)
 
@@ -52,17 +53,19 @@ class PartnerTransactionXLSX(models.AbstractModel):
             sheet.write(row, 0, line['partner_name'])
             sheet.write(row, 1, line['partner_phone'] or '')
             sheet.write(row, 2, line['avg_transaction_date'], date_format)
-            sheet.write(row, 3, line['days_since_avg_transaction'])
-            sheet.write(row, 4, line['total_transaction_amount'], number_format)
-            sheet.write(row, 5, line['net_debit'], number_format)
-            sheet.write(row, 6, line['net_credit'], number_format)
-            sheet.write(row, 7, line['net_balance'], number_format)
+            sheet.write(row, 3, line['avg_credit_date'], date_format)
+            sheet.write(row, 4, line['avg_debit_date'], date_format)
+            sheet.write(row, 5, line['days_since_avg_transaction'])
+            sheet.write(row, 6, line['total_transaction_amount'], number_format)
+            sheet.write(row, 7, line['net_debit'], number_format)
+            sheet.write(row, 8, line['net_credit'], number_format)
+            sheet.write(row, 9, line['net_balance'], number_format)
             row += 1
 
         if report_data:
             sheet.write(row + 1, 0, 'TOPLAM', bold)
-            for col in range(4, 8):
-                start_cell = chr(65 + col) + '5'  # E5, F5, G5, H5
+            for col in range(6, 10):
+                start_cell = chr(65 + col) + '5'  # G5, H5, I5, J5
                 end_cell = chr(65 + col) + str(row)
                 formula = f'=SUM({start_cell}:{end_cell})'
                 sheet.write_formula(row + 1, col, formula, number_format)
