@@ -1,8 +1,10 @@
-from odoo import models, fields, api
+from odoo import models, fields, api, _
+from odoo.exceptions import UserError
 
-class PartnerTransactionWizard(models.TransientModel):
-    _name = 'partner.transaction.wizard'
-    _description = 'Partner Transaction Report Wizard'
+
+class PartnerTransactionWizard(models.TransientModel): 
+    _name = "partner.transaction.wizard"
+    _description = "Partner Transaction Report Wizard"
 
     partner_ids = fields.Many2many('res.partner', string='Cariler')
 
@@ -14,20 +16,12 @@ class PartnerTransactionWizard(models.TransientModel):
                 p.name as partner_name,
                 COALESCE(p.mobile, p.phone) as partner_phone,
                 to_timestamp(
-                    (SUM(EXTRACT(EPOCH FROM aml.date) * aml.debit) - 
-                     SUM(EXTRACT(EPOCH FROM aml.date) * aml.credit))
-                    / NULLIF(SUM(ABS(aml.balance)), 0)
-                )::date as avg_transaction_date,
-                to_timestamp(SUM(EXTRACT(EPOCH FROM aml.date) * aml.credit) / 
-                    NULLIF(SUM(aml.credit), 0))::date as avg_credit_date,
-                to_timestamp(SUM(EXTRACT(EPOCH FROM aml.date) * aml.debit) / 
-                    NULLIF(SUM(aml.debit), 0))::date as avg_debit_date,
+                    (SUM(EXTRACT(EPOCH FROM aml.date) * aml.debit) - SUM(EXTRACT(EPOCH FROM aml.date) * aml.credit)) / NULLIF(SUM(aml.balance), 0) )::date as avg_transaction_date,
+                to_timestamp(SUM(EXTRACT(EPOCH FROM aml.date) * aml.debit) / NULLIF(SUM(aml.debit), 0))::date as avg_debit_date,
+                to_timestamp(SUM(EXTRACT(EPOCH FROM aml.date) * aml.credit) /NULLIF(SUM(aml.credit), 0))::date as avg_credit_date,
                 current_date - (to_timestamp(
-                    (SUM(EXTRACT(EPOCH FROM aml.date) * aml.debit) - 
-                     SUM(EXTRACT(EPOCH FROM aml.date) * aml.credit))
-                    / NULLIF(SUM(ABS(aml.balance)), 0)
+                    (SUM(EXTRACT(EPOCH FROM aml.date) * aml.debit) - SUM(EXTRACT(EPOCH FROM aml.date) * aml.credit)) / NULLIF(SUM(aml.balance), 0)
                 )::date) as days_since_avg_transaction,
-                SUM(ABS(aml.balance)) as total_transaction_amount,
                 SUM(aml.debit) as net_debit,
                 SUM(aml.credit) as net_credit,
                 SUM(aml.balance) as net_balance
@@ -49,7 +43,6 @@ class PartnerTransactionWizard(models.TransientModel):
         query += """
             GROUP BY p.id, p.name, p.mobile, p.phone
             HAVING SUM(ABS(aml.balance)) != 0
-            ORDER BY total_transaction_amount DESC
         """
 
         self.env.cr.execute(query, params)
