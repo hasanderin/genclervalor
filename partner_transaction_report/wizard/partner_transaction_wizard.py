@@ -15,13 +15,9 @@ class PartnerTransactionWizard(models.TransientModel):
                 p.id as partner_id,
                 p.name as partner_name,
                 COALESCE(p.mobile, p.phone) as partner_phone,
-                to_timestamp(
-                    (SUM(EXTRACT(EPOCH FROM aml.date) * aml.debit) - SUM(EXTRACT(EPOCH FROM aml.date) * aml.credit)) / NULLIF(SUM(aml.balance), 0) )::date as avg_transaction_date,
                 to_timestamp(SUM(EXTRACT(EPOCH FROM aml.date) * aml.debit) / NULLIF(SUM(aml.debit), 0))::date as avg_debit_date,
                 to_timestamp(SUM(EXTRACT(EPOCH FROM aml.date) * aml.credit) /NULLIF(SUM(aml.credit), 0))::date as avg_credit_date,
-                current_date - (to_timestamp(
-                    (SUM(EXTRACT(EPOCH FROM aml.date) * aml.debit) - SUM(EXTRACT(EPOCH FROM aml.date) * aml.credit)) / NULLIF(SUM(aml.balance), 0)
-                )::date) as days_since_avg_transaction,
+                (SUM(EXTRACT(EPOCH FROM aml.date) * aml.debit) / NULLIF(SUM(aml.debit), 0) - SUM(EXTRACT(EPOCH FROM aml.date) * aml.credit) /NULLIF(SUM(aml.credit), 0)) / 86400 as days_since_avg_transaction,
                 SUM(aml.debit) as net_debit,
                 SUM(aml.credit) as net_credit,
                 SUM(aml.balance) as net_balance

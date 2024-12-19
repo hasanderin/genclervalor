@@ -32,18 +32,17 @@ class PartnerTransactionXLSX(models.AbstractModel):
 
         headers = [
             'Cari Adı', 'Telefon',
-            'Ortalama Tarihi', 'Ort. Gün',
             'Borç Ort. Tarihi', 'Alacak Ort. Tarihi',
+            'Ort. Gün',
             'Borç', 'Alacak', 'Bakiye'
         ]
 
         sheet.set_column('A:A', 40)  # Cari Adı
         sheet.set_column('B:B', 15)  # Telefon
-        sheet.set_column('C:C', 20)  #
-        sheet.set_column('D:D', 10)  #
-        sheet.set_column('E:E', 20)  #
-        sheet.set_column('F:F', 20)  #
-        sheet.set_column('G:I', 15)  #
+        sheet.set_column('C:C', 20)  # Borç Ort. Tarihi
+        sheet.set_column('D:D', 20)  # Alacak Ort. Tarihi
+        sheet.set_column('E:E', 10)  # Ort. Gün
+        sheet.set_column('F:H', 15)  # Borç, Alacak, Bakiye
 
         title = f'Cari Hareket Özeti Raporu - {report_title}'
         sheet.merge_range('A1:J1', title, bold)
@@ -57,16 +56,12 @@ class PartnerTransactionXLSX(models.AbstractModel):
         for line in report_data:
             sheet.write(row, 0, line['partner_name'])
             sheet.write(row, 1, line['partner_phone'] or '')
-
-            sheet.write(row, 2, line['avg_transaction_date'], date_format)
-            sheet.write(row, 3, line['days_since_avg_transaction'])
-
-            sheet.write(row, 4, line['avg_debit_date'], date_format)
-            sheet.write(row, 4, line['avg_credit_date'], date_format)
-
-            sheet.write(row, 6, line['net_debit'], number_format)
-            sheet.write(row, 7, line['net_credit'], number_format)
-            sheet.write(row, 8, line['net_balance'], number_format)
+            sheet.write(row, 2, line['avg_debit_date'], date_format)
+            sheet.write(row, 3, line['avg_credit_date'], date_format)
+            sheet.write(row, 4, line['days_since_avg_transaction'])
+            sheet.write(row, 5, line['net_debit'], number_format)
+            sheet.write(row, 6, line['net_credit'], number_format)
+            sheet.write(row, 7, line['net_balance'], number_format)
             row += 1
 
         # if report_data:
