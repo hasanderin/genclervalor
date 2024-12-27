@@ -1,14 +1,17 @@
+from os import error
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
-
+from odoo.tools import split_every
 
 class PartnerTransactionWizard(models.TransientModel): 
     _name = "partner.transaction.wizard"
     _description = "Partner Transaction Report Wizard"
 
     partner_ids = fields.Many2many('res.partner', string='Cariler')
+    error_message = fields.Text(string='Hata Mesajı', readonly=1)
 
-    def _prepare_report_data(self):
+    @api.model
+    def _prepare_report_data(self, partner_ids=None):
         self.ensure_one()
         query = """
             SELECT
@@ -36,22 +39,42 @@ class PartnerTransactionWizard(models.TransientModel):
         """
 
         params = []
-        if self.partner_ids:
+        if partner_ids:
             query += " AND p.id IN %s"
-            params.append(tuple(self.partner_ids.ids))
+            params.append(tuple(partner_ids))
 
         query += """
             GROUP BY p.id, p.name, p.mobile, p.phone
             HAVING SUM(ABS(aml.balance)) != 0
         """
 
-        self.env.cr.execute(query, params)
+        self.env.cr.execute(query, params, log_exceptions=False)
         return self.env.cr.dictfetchall()
 
     def print_xlsx_report(self):
         self.ensure_one()
+        report_data = []
+        errors = []
+        self.error_message = ""
+        partners = [{'id': partner.id, 'name': partner.name} for partner in self.partner_ids] or self.env['res.partner'].search_read([], fields=['id', 'name'])
+        for partner_ids in split_every(50, partners):
+            try:
+                partner_datas = self._prepare_report_data(partner_ids=[partner['id'] for partner in partner_ids])
+                report_data.extend(partner_datas)
+            except Exception:
+                self._cr.rollback()
+                for partner in partner_ids:
+                    try:
+                        partner_data = self._prepare_report_data(partner_ids=[partner['id']])
+                        report_data.extend(partner_data)
+                    except Exception as e:
+                        self._cr.rollback()
+                        errors.append(f"{partner['name']}_{partner['id']}: Hata {e}\n")
+                        continue
+        if errors:
+            self.error_message = "\n".join(errors)
         data = {
-            'report_data': self._prepare_report_data(),
+            'report_data': report_data,
             'partner_ids': self.partner_ids.ids if self.partner_ids else [],
             'report_title': 'Seçili Cariler' if self.partner_ids else 'Tüm Cariler',
         }

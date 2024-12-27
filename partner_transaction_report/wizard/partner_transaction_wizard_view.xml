@@ -8,6 +8,9 @@
                 <group>
                     <field name="partner_ids" widget="many2many_tags" options="{'no_create': True}"/>
                 </group>
+                <group>
+                    <field name="error_message"/>
+                </group>
                 <footer>
                     <button name="print_xlsx_report" string="XLSX Rapor" type="object" class="btn-primary"/>
                     <button string="İptal" class="btn-secondary" special="cancel"/>
