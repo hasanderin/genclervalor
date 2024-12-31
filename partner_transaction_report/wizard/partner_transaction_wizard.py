@@ -32,7 +32,7 @@ class PartnerTransactionWizard(models.TransientModel):
                 END as avg_credit_date,
                 CASE
                     WHEN ((SUM(EXTRACT(EPOCH FROM aml.date) * aml.debit) - SUM(EXTRACT(EPOCH FROM aml.date) * aml.credit)) / NULLIF(SUM(aml.balance), 0)) > 0
-                        AND (SUM(EXTRACT(EPOCH FROM aml.date) * aml.credit) / NULLIF(SUM(aml.credit), 0)) <= 294276000000
+                        AND ((SUM(EXTRACT(EPOCH FROM aml.date) * aml.debit) - SUM(EXTRACT(EPOCH FROM aml.date) * aml.credit)) / NULLIF(SUM(aml.balance), 0)) <= 294276000000
                     THEN CURRENT_DATE - to_timestamp((SUM(EXTRACT(EPOCH FROM aml.date) * aml.debit) - SUM(EXTRACT(EPOCH FROM aml.date) * aml.credit)) / NULLIF(SUM(aml.balance), 0))::date
                     ELSE NULL
                 END as days_since_avg_transaction,
