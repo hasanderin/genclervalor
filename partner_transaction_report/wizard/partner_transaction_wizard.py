@@ -1,14 +1,14 @@
 from os import error
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
-from odoo.tools import split_every
 
-class PartnerTransactionWizard(models.TransientModel): 
+
+class PartnerTransactionWizard(models.TransientModel):
     _name = "partner.transaction.wizard"
     _description = "Partner Transaction Report Wizard"
 
     partner_ids = fields.Many2many('res.partner', string='Cariler')
-    error_message = fields.Text(string='Hata Mesajı', readonly=1)
+
 
     @api.model
     def _prepare_report_data(self, partner_ids=None):
@@ -18,13 +18,21 @@ class PartnerTransactionWizard(models.TransientModel):
                 p.id as partner_id,
                 p.name as partner_name,
                 COALESCE(p.mobile, p.phone) as partner_phone,
-                to_timestamp(SUM(EXTRACT(EPOCH FROM aml.date) * aml.debit) / NULLIF(SUM(aml.debit), 0))::date as avg_debit_date,
-                to_timestamp(SUM(EXTRACT(EPOCH FROM aml.date) * aml.credit) /NULLIF(SUM(aml.credit), 0))::date as avg_credit_date,
-                CURRENT_DATE - to_timestamp(
-                        (
-                            SUM(EXTRACT(EPOCH FROM aml.date) * aml.debit) -
-                            SUM(EXTRACT(EPOCH FROM aml.date) * aml.credit)
-                        ) / NULLIF(SUM(aml.balance), 0))::date as days_since_avg_transaction,
+                CASE
+                    WHEN (SUM(EXTRACT(EPOCH FROM aml.date) * aml.debit) / NULLIF(SUM(aml.debit), 0)) > 0
+                    THEN to_timestamp(SUM(EXTRACT(EPOCH FROM aml.date) * aml.debit) / NULLIF(SUM(aml.debit), 0))::date
+                    ELSE NULL
+                END as avg_debit_date,
+                CASE
+                    WHEN (SUM(EXTRACT(EPOCH FROM aml.date) * aml.credit) / NULLIF(SUM(aml.credit), 0)) > 0
+                    THEN to_timestamp(SUM(EXTRACT(EPOCH FROM aml.date) * aml.credit) / NULLIF(SUM(aml.credit), 0))::date
+                    ELSE NULL
+                END as avg_credit_date,
+                CASE
+                    WHEN ((SUM(EXTRACT(EPOCH FROM aml.date) * aml.debit) - SUM(EXTRACT(EPOCH FROM aml.date) * aml.credit)) / NULLIF(SUM(aml.balance), 0)) > 0
+                    THEN CURRENT_DATE - to_timestamp((SUM(EXTRACT(EPOCH FROM aml.date) * aml.debit) - SUM(EXTRACT(EPOCH FROM aml.date) * aml.credit)) / NULLIF(SUM(aml.balance), 0))::date
+                    ELSE NULL
+                END as days_since_avg_transaction,
                 SUM(aml.debit) as net_debit,
                 SUM(aml.credit) as net_credit,
                 SUM(aml.balance) as net_balance
@@ -36,6 +44,7 @@ class PartnerTransactionWizard(models.TransientModel):
                 AND aml.balance != 0
                 AND a.internal_type in ('receivable', 'payable')
                 AND am.closing_type not in ('opening', 'closing')
+
         """
 
         params = []
@@ -53,28 +62,8 @@ class PartnerTransactionWizard(models.TransientModel):
 
     def print_xlsx_report(self):
         self.ensure_one()
-        report_data = []
-        errors = []
-        self.error_message = ""
-        partners = [{'id': partner.id, 'name': partner.name} for partner in self.partner_ids] or self.env['res.partner'].search_read([], fields=['id', 'name'])
-        for partner_ids in split_every(50, partners):
-            try:
-                partner_datas = self._prepare_report_data(partner_ids=[partner['id'] for partner in partner_ids])
-                report_data.extend(partner_datas)
-            except Exception:
-                self._cr.rollback()
-                for partner in partner_ids:
-                    try:
-                        partner_data = self._prepare_report_data(partner_ids=[partner['id']])
-                        report_data.extend(partner_data)
-                    except Exception as e:
-                        self._cr.rollback()
-                        errors.append(f"{partner['name']}_{partner['id']}: Hata {e}\n")
-                        continue
-        if errors:
-            self.error_message = "\n".join(errors)
         data = {
-            'report_data': report_data,
+            'report_data': self._prepare_report_data(partner_ids=self.partner_ids.ids),
             'partner_ids': self.partner_ids.ids if self.partner_ids else [],
             'report_title': 'Seçili Cariler' if self.partner_ids else 'Tüm Cariler',
         }
