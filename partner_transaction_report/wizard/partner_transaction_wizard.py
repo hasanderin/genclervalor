@@ -20,16 +20,19 @@ class PartnerTransactionWizard(models.TransientModel):
                 COALESCE(p.mobile, p.phone) as partner_phone,
                 CASE
                     WHEN (SUM(EXTRACT(EPOCH FROM aml.date) * aml.debit) / NULLIF(SUM(aml.debit), 0)) > 0
+                        AND (SUM(EXTRACT(EPOCH FROM aml.date) * aml.debit) / NULLIF(SUM(aml.debit), 0)) <= 294276000000
                     THEN to_timestamp(SUM(EXTRACT(EPOCH FROM aml.date) * aml.debit) / NULLIF(SUM(aml.debit), 0))::date
                     ELSE NULL
                 END as avg_debit_date,
                 CASE
                     WHEN (SUM(EXTRACT(EPOCH FROM aml.date) * aml.credit) / NULLIF(SUM(aml.credit), 0)) > 0
+                        AND (SUM(EXTRACT(EPOCH FROM aml.date) * aml.credit) / NULLIF(SUM(aml.credit), 0)) <= 294276000000
                     THEN to_timestamp(SUM(EXTRACT(EPOCH FROM aml.date) * aml.credit) / NULLIF(SUM(aml.credit), 0))::date
                     ELSE NULL
                 END as avg_credit_date,
                 CASE
                     WHEN ((SUM(EXTRACT(EPOCH FROM aml.date) * aml.debit) - SUM(EXTRACT(EPOCH FROM aml.date) * aml.credit)) / NULLIF(SUM(aml.balance), 0)) > 0
+                        AND (SUM(EXTRACT(EPOCH FROM aml.date) * aml.credit) / NULLIF(SUM(aml.credit), 0)) <= 294276000000
                     THEN CURRENT_DATE - to_timestamp((SUM(EXTRACT(EPOCH FROM aml.date) * aml.debit) - SUM(EXTRACT(EPOCH FROM aml.date) * aml.credit)) / NULLIF(SUM(aml.balance), 0))::date
                     ELSE NULL
                 END as days_since_avg_transaction,
@@ -44,7 +47,6 @@ class PartnerTransactionWizard(models.TransientModel):
                 AND aml.balance != 0
                 AND a.internal_type in ('receivable', 'payable')
                 AND am.closing_type not in ('opening', 'closing')
-
         """
 
         params = []
